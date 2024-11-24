@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Questions Totales</h5>
+                    <h2 class="mb-0">{{ stats.total }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-center mb-3">Transformation des Questions</h5>
+                    <div class="transformation-description">
+                        {{ stats.transformation_description | replace('\n', '<br>') | safe }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Questions En Attente</h5>
+                    <h2 class="mb-0">{{ stats.unprocessed }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">Questions par Jour</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="questionsChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('questionsChart').getContext('2d');
+    const questionsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ stats.dates|tojson }},
+            datasets: [{
+                label: 'Nombre de Questions',
+                data: {{ stats.counts|tojson }},
+                borderColor: 'rgb(var(--bs-primary-rgb))',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Évolution des Questions dans le Temps'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

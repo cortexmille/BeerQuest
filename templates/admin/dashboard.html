@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css', v=2) }}">
+{% endblock %}
+
+{% block content %}
+<div class="card dashboard-card mb-5">
+    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+        <h3 class="mb-0">Monitoring LLM</h3>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="text-center">
+                    <h5 class="card-title mb-3">Questions en attente</h5>
+                    <h2 class="display-4 mb-0" id="pending-questions">{{ stats.unprocessed }}</h2>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="text-center">
+                    <h5 class="card-title mb-3">Prochain traitement dans</h5>
+                    <h2 class="display-4 mb-0" id="next-run-countdown">--:--</h2>
+                    <button class="btn btn-primary mt-4" id="manual-process-btn" onclick="runManualProcess()">
+                        Lancer le traitement des questions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="row" id="synthesesList">
+        <div class="col-12">
+            <div class="card border-0 bg-transparent w-100">
+                <div class="card-header bg-dark d-flex justify-content-between align-items-center rounded-3 mb-4">
+                    <h3 class="mb-0">Synthèses des questions</h3>
+                    <div class="d-flex align-items-center">
+                        {% if syntheses %}
+                        <div class="d-flex gap-2">
+                            <form action="{{ url_for('admin.archive_all_syntheses') }}" method="POST" onsubmit="return confirmArchiveAll()">
+                                <button type="submit" class="btn btn-warning btn-sm">
+                                    <i class="fas fa-archive"></i> Archiver tout
+                                </button>
+                            </form>
+                            <a href="{{ url_for('admin.download_all_syntheses_pdf') }}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-file-pdf"></i> Tout exporter en PDF
+                            </a>
+                            <form action="{{ url_for('admin.delete_all_syntheses') }}" method="POST" onsubmit="return confirmDeleteAll()">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Tout supprimer
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                        <span class="badge bg-primary rounded-pill px-3">Total: {{ syntheses|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body px-0 w-100">
+        {% for synthesis in syntheses %}
+        <div class="synthesis-item mb-4">
+            <h5 class="text-muted">Generated on: {{ synthesis.created_at.astimezone(pytz.timezone('Europe/Paris')).strftime('%Y-%m-%d %H:%M:%S %Z') }}</h5>
+            <div class="synthesis-content p-4 bg-dark rounded-3">
+                <div class="synthesis-text mb-4">
+                    {{ synthesis.content|safe }}
+                </div>
+                <div class="synthesis-actions">
+                    <a href="{{ url_for('admin.download_synthesis_pdf', synthesis_id=synthesis.id) }}" 
+                       class="btn btn-secondary btn-sm me-2">
+                        <i class="fas fa-file-pdf"></i> Exporter en PDF
+                    </a>
+                    <form action="{{ url_for('admin.archive_synthesis', synthesis_id=synthesis.id) }}" method="POST" class="d-inline me-2">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-archive"></i> Archiver
+                        </button>
+                    </form>
+                    <form action="{{ url_for('admin.delete_synthesis', synthesis_id=synthesis.id) }}" method="POST" class="d-inline" onsubmit="return confirmDelete()">
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="questions-list mt-4 p-3 bg-dark rounded-3">
+                <h6 class="mb-3 text-primary">Questions Originales:</h6>
+                <ul class="list-unstyled">
+                    {% for question in synthesis.questions %}
+                    <li class="mb-2 ps-3 border-start border-primary">{{ question.content }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-center">Pas de synthèse pour le moment.</p>
+        {% endfor %}
+    </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    // Connect to WebSocket
+    const socket = io({
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity
+    });
+    
+    // Socket.IO connection handling
+    socket.on('connect', () => {
+        document.getElementById('next-run-countdown').classList.remove('text-danger');
+        updateCountdown();
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+        document.getElementById('next-run-countdown').classList.add('text-danger');
+    });
+
+    socket.on('disconnect', () => {
+        document.getElementById('next-run-countdown').classList.add('text-danger');
+        updateCountdown();
+    });
+
+    socket.on('reconnect', () => {
+        document.getElementById('next-run-countdown').classList.remove('text-danger');
+        updateCountdown();
+    });
+
+    socket.on('reconnect_error', (error) => {
+        console.error('Socket.IO reconnection error:', error);
+    });
+    
+    // Listen for auto process events
+    socket.on('auto_process_start', function() {
+        const countdownElement = document.getElementById('next-run-countdown');
+        countdownElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Traitement en cours...';
+    });
+
+    socket.on('auto_process_complete', function() {
+        updateCountdown();
+    });
+    
+    // Listen for synthesis completion
+    socket.on('synthesis_complete', function(data) {
+        if (data.success) {
+            try {
+                // Mettre à jour les statistiques sans animation
+                const counterElement = document.getElementById('pending-questions');
+                if (!counterElement) {
+                    console.error('Counter element not found');
+                    return;
+                }
+                counterElement.textContent = data.stats.unprocessed;
+                
+                // Sélectionner le conteneur avec plus de précision
+                const synthesesContainer = document.querySelector('#synthesesList .card-body');
+                if (!synthesesContainer) {
+                    console.error('Syntheses container not found');
+                    return;
+                }
+                
+                const synthesesTemplate = `
+                    <div class="synthesis-item synthesis-item-new mb-4">
+                        <h5 class="text-muted">Generated on: ${data.new_synthesis.created_at}</h5>
+                        <div class="synthesis-content p-4 bg-dark rounded-3">
+                            <div class="synthesis-text mb-4">
+                                ${data.new_synthesis.content}
+                            </div>
+                            <div class="synthesis-actions">
+                                <a href="/admin/synthesis/${data.new_synthesis.id}/pdf" 
+                                   class="btn btn-secondary btn-sm me-2">
+                                    <i class="fas fa-file-pdf"></i> Exporter en PDF
+                                </a>
+                                <form action="/admin/synthesis/${data.new_synthesis.id}/archive" method="POST" class="d-inline me-2">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-archive"></i> Archiver
+                                    </button>
+                                </form>
+                                <form action="/admin/synthesis/${data.new_synthesis.id}/delete" method="POST" class="d-inline" onsubmit="return confirmDelete()">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="questions-list mt-4 p-3 bg-dark rounded-3">
+                            <h6 class="mb-3 text-primary">Questions Originales:</h6>
+                            <ul class="list-unstyled">
+                                ${data.new_synthesis.questions.map(q => `
+                                    <li class="mb-2 ps-3 border-start border-primary">${q.content}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                // Update total count badge
+                const totalBadge = document.querySelector('.badge.bg-primary');
+                if (totalBadge) {
+                    const currentTotal = parseInt(totalBadge.textContent.split(': ')[1]) + 1;
+                    totalBadge.textContent = `Total: ${currentTotal}`;
+                }
+                
+                // Check if "No syntheses available yet" message exists and remove it
+                const noSynthesesMessage = synthesesContainer.querySelector('p.text-center');
+                if (noSynthesesMessage) {
+                    noSynthesesMessage.remove();
+                }
+                
+                // Insérer au début de la liste
+                const firstSynthesis = synthesesContainer.querySelector('.synthesis-item');
+                if (firstSynthesis) {
+                    firstSynthesis.insertAdjacentHTML('beforebegin', synthesesTemplate);
+                } else {
+                    synthesesContainer.innerHTML = synthesesTemplate;
+                }
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            } finally {
+                // Réinitialiser le bouton de traitement
+                const btn = document.getElementById('manual-process-btn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Lancer le traitement';
+                }
+            }
+        } else {
+            alert('Erreur lors du traitement: ' + data.error);
+            const btn = document.getElementById('manual-process-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Lancer le traitement des questions';
+            }
+        }
+    });
+
+    // Update countdown timer
+    function updateCountdown() {
+        fetch('/admin/next-run-time')
+            .then(response => response.json())
+            .then(data => {
+                const countdownElement = document.getElementById('next-run-countdown');
+                if (!countdownElement) {
+                    console.error('Countdown element not found!');
+                    return;
+                }
+                
+                countdownElement.textContent = data.countdown;
+                
+                // Si le compte à rebours arrive à 0, afficher "Traitement..."
+                if (data.countdown === "00:00") {
+                    countdownElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Traitement...';
+                }
+                
+                const pendingElement = document.getElementById('pending-questions');
+                if (pendingElement && pendingElement.textContent !== data.pending_questions.toString()) {
+                    pendingElement.textContent = data.pending_questions;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la mise à jour du compteur:', error);
+                const countdownElement = document.getElementById('next-run-countdown');
+                if (countdownElement) {
+                    countdownElement.textContent = '--:--';
+                }
+            });
+    }
+
+    // Manual processing function
+    function runManualProcess() {
+        // Vérifier le nombre de questions en attente
+        const pendingQuestions = parseInt(document.getElementById('pending-questions').textContent);
+        if (pendingQuestions === 0) {
+            alert('Aucune question en attente de traitement');
+            return;
+        }
+
+        const btn = document.getElementById('manual-process-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Traitement...';
+
+        fetch('/admin/run-synthesis', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('Erreur lors du traitement: ' + data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Lancer le traitement';
+                }
+            })
+            .catch(error => {
+                alert('Erreur lors du traitement');
+                btn.disabled = false;
+btn.textContent = 'Lancer le traitement';
+            });
+    }
+
+    // Update countdown every second
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    // Fonctions de confirmation
+    function confirmDelete() {
+        return confirm('Êtes-vous sûr de vouloir supprimer cette synthèse ? Cette action ne peut pas être annulée.');
+    }
+
+    function confirmDeleteAll() {
+        return confirm('Êtes-vous sûr de vouloir supprimer toutes les synthèses ? Cette action ne peut pas être annulée.');
+    }
+
+    function confirmArchiveAll() {
+        return confirm('Êtes-vous sûr de vouloir archiver toutes les synthèses ? Cette action ne peut pas être annulée.');
+    }
+</script>
+{% endblock %}

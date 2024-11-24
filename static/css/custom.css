@@ -1,0 +1,154 @@
+/* Dashboard Cards Styling */
+.dashboard-card {
+    background-color: var(--bs-dark);
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.2s ease;
+}
+
+
+.dashboard-card .card-title {
+    color: var(--bs-primary);
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+}
+
+.dashboard-card .display-4 {
+    font-weight: 600;
+    color: var(--bs-light);
+}
+/* Counter Styling */
+#pending-questions {
+    position: relative;
+    z-index: 100;
+    font-weight: bold;
+}
+
+.counter-update {
+    color: var(--bs-warning);
+}
+
+/* Synthesis Item Styling */
+.synthesis-item {
+    background-color: var(--bs-dark);
+    border-radius: 15px;
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Content Area Styling */
+.synthesis-content {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    padding: 2.5rem;
+    margin: 2rem 0;
+    line-height: 1.8;
+    letter-spacing: 0.01em;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: 1.05rem;
+}
+
+/* Card Body Full Width */
+.card-body {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+}
+
+@media (max-width: 768px) {
+    .synthesis-item {
+        padding: 1.5rem;
+    }
+    
+    .synthesis-content {
+        padding: 1.5rem;
+    }
+    
+    .dashboard-card .card-body {
+        padding: 1.5rem !important;
+    }
+}
+
+.synthesis-text {
+    font-size: 1.1em;
+    color: var(--bs-light);
+    letter-spacing: 0.02em;
+}
+
+/* Timestamp Styling */
+.synthesis-item h5 {
+    color: var(--bs-primary);
+    font-size: 0.95em;
+    margin-bottom: 15px;
+}
+
+/* Questions List Styling */
+.questions-list {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 2rem;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.questions-list h6 {
+    color: var(--bs-primary);
+    font-size: 1.1em;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.questions-list ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.questions-list li {
+    color: var(--bs-light);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--bs-primary);
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 0 8px 8px 0;
+    line-height: 1.6;
+}
+
+/* Button Styling */
+.synthesis-actions {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.synthesis-actions .btn {
+    transition: all 0.2s ease;
+}
+
+.synthesis-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Alert Styling */
+.alert {
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Logo Animation Styles */
+.navbar-brand img {
+    transition: transform 0.3s ease-in-out;
+    transform-origin: center;
+}
+
+.navbar-brand:hover img {
+    transform: scale(1.2);
+}

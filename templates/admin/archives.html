@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 bg-transparent w-100">
+                <div class="card-header bg-dark d-flex justify-content-between align-items-center rounded-3 mb-4">
+                    <h3 class="mb-0">Archives des Synthèses</h3>
+                    <div class="d-flex align-items-center gap-3">
+                        {% if syntheses %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="dropdown">
+                                <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-file-pdf"></i> Exporter PDF
+                                </button>
+                                <div class="dropdown-menu p-3" aria-labelledby="exportDropdown" style="min-width: 300px;">
+                                    <form action="{{ url_for('admin.download_all_archives_filtered') }}" method="GET">
+                                        <div class="mb-3">
+                                            <label for="start_date" class="form-label">Date de début</label>
+                                            <input type="date" class="form-control" id="start_date" name="start_date">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="end_date" class="form-label">Date de fin</label>
+                                            <input type="date" class="form-control" id="end_date" name="end_date">
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <button type="submit" class="btn btn-primary btn-sm">Exporter filtré</button>
+                                            <a href="{{ url_for('admin.download_all_archives_unfiltered') }}" class="btn btn-secondary btn-sm">
+                                                Exporter tout
+                                            </a>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <form action="{{ url_for('admin.delete_all_archives') }}" method="POST" class="d-inline" onsubmit="return confirmDeleteAll()">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Supprimer tout
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                        <span class="badge bg-primary rounded-pill px-3">Total: {{ syntheses|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body px-0">
+                    {% for synthesis in syntheses %}
+                    <div class="synthesis-item mb-4">
+                        <h5 class="text-muted">
+                            Generated: {{ synthesis.created_at.astimezone(pytz.timezone('Europe/Paris')).strftime('%Y-%m-%d %H:%M:%S %Z') }}
+                            <br>
+                            Archived: {{ synthesis.archive_date.astimezone(pytz.timezone('Europe/Paris')).strftime('%Y-%m-%d %H:%M:%S %Z') }}
+                        </h5>
+                        <div class="synthesis-content p-4 bg-dark rounded-3">
+                            <div class="synthesis-text mb-4">
+                                {{ synthesis.content|safe }}
+                            </div>
+                            <div class="synthesis-actions">
+                                <a href="{{ url_for('admin.download_synthesis_pdf', synthesis_id=synthesis.id) }}" 
+                                   class="btn btn-secondary btn-sm me-2">
+                                    <i class="fas fa-file-pdf"></i> Exporter en PDF
+                                </a>
+                                <form action="{{ url_for('admin.delete_archive', synthesis_id=synthesis.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette synthèse archivée ?')">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="questions-list mt-4 p-3 bg-dark rounded-3">
+<script>
+function confirmDeleteAll() {
+    return confirm('Êtes-vous sûr de vouloir supprimer toutes les synthèses archivées ? Cette action ne peut pas être annulée.');
+}
+</script>
+                            <h6 class="mb-3 text-primary">Questions Originales:</h6>
+                            <ul class="list-unstyled">
+                                {% for question in synthesis.questions %}
+                                <li class="mb-2 ps-3 border-start border-primary">{{ question.content }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-center">Aucune synthèse archivée.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

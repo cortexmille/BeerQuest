@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Synthèse des Questions</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .synthesis-date {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        .synthesis-content {
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        .questions-list {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .questions-list h3 {
+            color: #444;
+            margin-bottom: 15px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .synthesis-item {
+            margin-bottom: 40px;
+        }
+        .page-break {
+            page-break-after: always;
+            margin: 40px 0;
+            border-bottom: 1px dashed #ccc;
+        }
+        h2 {
+            color: #444;
+            margin: 20px 0;
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Synthèse des Questions</h1>
+    </div>
+    
+    <div class="synthesis-date">
+        Généré le : {{ datetime.now().strftime('%d/%m/%Y à %H:%M') }}
+    </div>
+    
+    {% if multiple %}
+        {% for synthesis in syntheses %}
+        <div class="synthesis-item">
+            <h2>Synthèse du {{ synthesis.created_at.strftime('%d/%m/%Y à %H:%M') }}</h2>
+            <div class="synthesis-content">
+                {{ synthesis.content|safe }}
+            </div>
+            
+            <div class="questions-list">
+                <h3>Questions d'origine :</h3>
+                <ul>
+                    {% for question in synthesis.questions %}
+                    <li>{{ question.content }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% if not loop.last %}
+            <div class="page-break"></div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="synthesis-content">
+            {{ synthesis.content|safe }}
+        </div>
+        
+        <div class="questions-list">
+            <h3>Questions d'origine :</h3>
+            <ul>
+                {% for question in synthesis.questions %}
+                <li>{{ question.content }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</body>
+</html>

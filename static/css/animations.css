@@ -1,0 +1,28 @@
+/* Animation for new synthesis items */
+@keyframes slideInDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.synthesis-item-new {
+    animation: slideInDown 1.5s ease-out forwards;
+}
+
+/* Add a subtle transition for all synthesis items */
+.synthesis-item {
+    transition: all 0.5s ease-out;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Hover effect for synthesis items */
+.synthesis-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}

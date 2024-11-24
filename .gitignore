@@ -1,0 +1,14 @@
+.replit
+replit.nix
+.config/
+.upm/
+.breakpoints
+.cache/
+__pycache__/
+*.pyc
+.env
+venv/
+*.pyo
+*.pyd
+.Python
+env/
