@@ -12,8 +12,8 @@
 ### 1. Clone the project
 
 ```bash
-git clone [PROJECT_URL]
-cd [PROJECT_NAME]
+git clone https://github.com/cortexmille/BeerQuest.git
+cd BeerQuest
 ```
 
 ### 2. Python Dependencies Installation
