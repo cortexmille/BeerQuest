@@ -10,12 +10,23 @@ class Admin(UserMixin, db.Model):
     password_hash = db.Column(db.String(256))
     email_notifications = db.Column(db.Boolean, default=True)
     receive_synthesis_copy = db.Column(db.Boolean, default=False)
+    is_superuser = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+        
+    def update_last_login(self):
+        self.last_login = datetime.utcnow()
+        db.session.commit()
+        
+    @property
+    def can_manage_admins(self):
+        return self.is_superuser
 
 class Synthesis(db.Model):
     __tablename__ = 'synthesis'

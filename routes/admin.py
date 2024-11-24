@@ -37,31 +37,139 @@ def dashboard():
 @login_required
 def settings():
     if request.method == 'POST':
-        # Mise à jour de l'email et des préférences de notification
-        current_user.email = request.form.get('email')
-        current_user.email_notifications = 'email_notifications' in request.form
-        current_user.receive_synthesis_copy = 'receive_synthesis_copy' in request.form
-        
-        # Mise à jour de l'intervalle de synthèse
-        new_interval = int(request.form.get('synthesis_interval', 60))
-        from app import app
-        app.config['SYNTHESIS_INTERVAL_MINUTES'] = new_interval
-        
-        # Redémarrer le job scheduler avec le nouvel intervalle
-        from tasks import scheduler, run_synthesis
-        scheduler.remove_all_jobs()
-        scheduler.add_job(
-            func=run_synthesis,
-            trigger='interval',
-            minutes=new_interval,
-            id='synthesis_job'
-        )
-        
-        db.session.commit()
-        flash('Paramètres mis à jour avec succès', 'success')
+        if 'update_profile' in request.form:
+            # Mise à jour de l'email et des préférences de notification
+            current_user.email = request.form.get('email')
+            current_user.email_notifications = 'email_notifications' in request.form
+            current_user.receive_synthesis_copy = 'receive_synthesis_copy' in request.form
+            
+            # Vérification et mise à jour du mot de passe si fourni
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            if current_password and new_password:
+                if not current_user.check_password(current_password):
+                    flash('Mot de passe actuel incorrect', 'danger')
+                    return redirect(url_for('admin.settings'))
+                    
+                if new_password != confirm_password:
+                    flash('Les nouveaux mots de passe ne correspondent pas', 'danger')
+                    return redirect(url_for('admin.settings'))
+                    
+                current_user.set_password(new_password)
+                flash('Mot de passe mis à jour avec succès', 'success')
+            
+            # Mise à jour de l'intervalle de synthèse
+            new_interval = int(request.form.get('synthesis_interval', 60))
+            from app import app
+            app.config['SYNTHESIS_INTERVAL_MINUTES'] = new_interval
+            
+            # Redémarrer le job scheduler avec le nouvel intervalle
+            from tasks import scheduler, run_synthesis
+            scheduler.remove_all_jobs()
+            scheduler.add_job(
+                func=run_synthesis,
+                trigger='interval',
+                minutes=new_interval,
+                id='synthesis_job'
+            )
+            
+            db.session.commit()
+            flash('Paramètres mis à jour avec succès', 'success')
+            
         return redirect(url_for('admin.settings'))
         
     return render_template('admin/settings.html')
+
+@admin_bp.route('/admin-management')
+@login_required
+def admin_management():
+    if not current_user.can_manage_admins:
+        flash('Accès non autorisé. Seuls les super-utilisateurs peuvent gérer les administrateurs.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+        
+    admins = Admin.query.all()
+    return render_template('admin/admin_management.html', admins=admins)
+
+@admin_bp.route('/admin-management/create', methods=['POST'])
+@login_required
+def create_admin():
+    if not current_user.can_manage_admins:
+        flash('Accès non autorisé', 'danger')
+        return redirect(url_for('admin.dashboard'))
+        
+    username = request.form.get('username')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    is_superuser = 'is_superuser' in request.form
+    
+    if Admin.query.filter((Admin.username == username) | (Admin.email == email)).first():
+        flash('Un administrateur avec ce nom d\'utilisateur ou email existe déjà', 'danger')
+        return redirect(url_for('admin.admin_management'))
+        
+    new_admin = Admin(username=username, email=email, is_superuser=is_superuser)
+    new_admin.set_password(password)
+    
+    db.session.add(new_admin)
+    db.session.commit()
+    
+    flash('Nouvel administrateur créé avec succès', 'success')
+    return redirect(url_for('admin.admin_management'))
+
+@admin_bp.route('/admin-management/<int:admin_id>/update', methods=['POST'])
+@login_required
+def update_admin(admin_id):
+    if not current_user.can_manage_admins:
+        flash('Accès non autorisé', 'danger')
+        return redirect(url_for('admin.dashboard'))
+        
+    admin = Admin.query.get_or_404(admin_id)
+    
+    # Empêcher la modification du dernier super-utilisateur
+    if admin.is_superuser and not request.form.get('is_superuser'):
+        superuser_count = Admin.query.filter_by(is_superuser=True).count()
+        if superuser_count <= 1:
+            flash('Impossible de retirer les droits du dernier super-utilisateur', 'danger')
+            return redirect(url_for('admin.admin_management'))
+    
+    admin.username = request.form.get('username')
+    admin.email = request.form.get('email')
+    admin.is_superuser = 'is_superuser' in request.form
+    
+    new_password = request.form.get('password')
+    if new_password:
+        admin.set_password(new_password)
+    
+    db.session.commit()
+    flash('Administrateur mis à jour avec succès', 'success')
+    return redirect(url_for('admin.admin_management'))
+
+@admin_bp.route('/admin-management/<int:admin_id>/delete', methods=['POST'])
+@login_required
+def delete_admin(admin_id):
+    if not current_user.can_manage_admins:
+        flash('Accès non autorisé', 'danger')
+        return redirect(url_for('admin.dashboard'))
+        
+    admin = Admin.query.get_or_404(admin_id)
+    
+    # Empêcher la suppression du dernier super-utilisateur
+    if admin.is_superuser:
+        superuser_count = Admin.query.filter_by(is_superuser=True).count()
+        if superuser_count <= 1:
+            flash('Impossible de supprimer le dernier super-utilisateur', 'danger')
+            return redirect(url_for('admin.admin_management'))
+    
+    # Empêcher l'auto-suppression
+    if admin.id == current_user.id:
+        flash('Vous ne pouvez pas supprimer votre propre compte', 'danger')
+        return redirect(url_for('admin.admin_management'))
+    
+    db.session.delete(admin)
+    db.session.commit()
+    flash('Administrateur supprimé avec succès', 'success')
+    return redirect(url_for('admin.admin_management'))
 
 @admin_bp.route('/logout')
 @login_required
