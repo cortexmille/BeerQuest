@@ -18,7 +18,7 @@ def create_app():
     migrate = Migrate(app, db)
     
     login_manager.init_app(app)
-    login_manager.login_view = 'admin.login'
+    login_manager.login_view = 'admin.login'  # type: ignore
     mail.init_app(app)
     scheduler.init_app(app)
     socketio.init_app(app, cors_allowed_origins="*")
