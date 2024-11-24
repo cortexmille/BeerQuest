@@ -89,6 +89,7 @@ Il est recommandé de changer ces identifiants après la première connexion.
 - Les résultats sont accessibles dans le tableau de bord admin
 
 ### Notifications par email
+Note : Cette fonctionnalité n'est pas encore développée.
 - Envoyées automatiquement lors de nouvelles questions
 - Configuration modifiable dans le panneau administrateur
 
