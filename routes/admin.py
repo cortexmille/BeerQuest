@@ -108,8 +108,7 @@ def create_admin():
         flash('Un administrateur avec ce nom d\'utilisateur ou email existe déjà', 'danger')
         return redirect(url_for('admin.admin_management'))
         
-    new_admin = Admin(username=username, email=email, is_superuser=is_superuser)
-    new_admin.set_password(password)
+    new_admin = Admin.create(username=username, email=email, password=password, is_superuser=is_superuser)
     
     db.session.add(new_admin)
     db.session.commit()

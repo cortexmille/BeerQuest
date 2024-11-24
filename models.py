@@ -23,6 +23,16 @@ class Admin(UserMixin, db.Model):
     def update_last_login(self):
         self.last_login = datetime.utcnow()
         db.session.commit()
+    
+    @classmethod
+    def create(cls, username, email, password=None, is_superuser=False):
+        admin = cls()
+        admin.username = username
+        admin.email = email
+        if password:
+            admin.set_password(password)
+        admin.is_superuser = is_superuser
+        return admin
         
     @property
     def can_manage_admins(self):
