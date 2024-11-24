@@ -11,7 +11,8 @@ def create_app():
     
     # Initialize extensions
     db.init_app(app)
-    app.db = db  # Make db accessible through app
+    # Store db instance in app config instead
+    app.config['db'] = db
     
     # Initialize Flask-Migrate
     migrate = Migrate(app, db)
